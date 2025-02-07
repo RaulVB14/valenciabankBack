@@ -11,11 +11,15 @@ import com.valenciaBank.valenciaBank.service.TransactionService;
 import com.valenciaBank.valenciaBank.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import java.io.File;
-import java.io.IOException;
 
-import static com.valenciaBank.valenciaBank.utils.Methods.readJSON;
 
 
 @RestController
@@ -60,7 +64,7 @@ public class TransactionsController {
 
         Account destinationAccount = accountService.findAccountByNumber(transaction.getDestinationAccount());
         Account originAccount = accountService.findAccountByNumber(transaction.getOriginAccount());
-        System.out.println("user que obtenemos: " + user.toString());
+        System.out.println("user que obtenemos: " + user);
 
 
         try{
@@ -86,6 +90,63 @@ public class TransactionsController {
         }
         return transaction;
     }
+
+
+ //revisar metodo
+    @GetMapping("/getFilter")
+    public List<Transaction> getFilterTransactions(
+            @RequestBody List<Transaction> inputWeb, // Recibe la lista de transacciones
+            @RequestParam(required = false) String startDate, // Fecha de inicio
+            @RequestParam(required = false) String endDate, // Fecha de fin
+            @RequestParam(required = false) Double minAmount, // Monto mínimo
+            @RequestParam(required = false) Double maxAmount // Monto máximo
+    ) {
+        // Formato de fecha esperado en las transacciones
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        // Inicializa el filtro de transacciones
+        List<Transaction> filteredTransactions = inputWeb;
+
+        // Verifica si se proporcionó el filtro de fecha de inicio
+        if (startDate != null && !startDate.isEmpty()) {
+            LocalDate start = LocalDate.parse(startDate, formatter);
+            filteredTransactions = filteredTransactions.stream()
+                    .filter(transaction -> {
+                        LocalDate transactionDate = LocalDate.parse((CharSequence) transaction.getDate(), formatter);
+                        return !transactionDate.isBefore(start);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        // Verifica si se proporcionó el filtro de fecha de fin
+        if (endDate != null && !endDate.isEmpty()) {
+            LocalDate end = LocalDate.parse(endDate, formatter);
+            filteredTransactions = filteredTransactions.stream()
+                    .filter(transaction -> {
+                        LocalDate transactionDate = LocalDate.parse((CharSequence) transaction.getDate(), formatter);
+                        return !transactionDate.isAfter(end);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        // Verifica si se proporcionó el filtro de monto mínimo
+        if (minAmount != null) {
+            filteredTransactions = filteredTransactions.stream()
+                    .filter(transaction -> transaction.getAmount() >= minAmount)
+                    .collect(Collectors.toList());
+        }
+
+        // Verifica si se proporcionó el filtro de monto máximo
+        if (maxAmount != null) {
+            filteredTransactions = filteredTransactions.stream()
+                    .filter(transaction -> transaction.getAmount() <= maxAmount)
+                    .collect(Collectors.toList());
+        }
+
+        // Devuelve las transacciones filtradas
+        return filteredTransactions;
+    }
+
 
 
 }
